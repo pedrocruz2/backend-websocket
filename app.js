@@ -170,7 +170,7 @@ app.post("/addEntrega", (req, res) => {
 
             db.run(
               insertDataQuery,
-              [id, issueDate, deliveryDate, destination, status],
+              [id,assetName, issueDate, deliveryDate, destination, status],
               function (err) {
                 if (err) {
                   console.log(err);
@@ -185,12 +185,12 @@ app.post("/addEntrega", (req, res) => {
       } else {
         // Se a tabela existir, apenas adicione os dados nela
         const insertDataQuery = `
-          INSERT INTO hist${id} (id, issueDate, deliveryDate, destination, status)
+          INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status)
           VALUES (?, ?, ?, ?, ?)
         `;
         db.run(
           insertDataQuery,
-          [id, issueDate, deliveryDate, destination, status],
+          [id, assetName, issueDate, deliveryDate, destination, status],
           function (err) {
             if (err) {
               console.log(err);
