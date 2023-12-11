@@ -149,6 +149,7 @@ app.post("/addEntrega", (req, res) => {
           CREATE TABLE hist${id} (
             num INTEGER PRIMARY KEY AUTOINCREMENT,
             id INTEGER,
+            assetName TEXT,
             issueDate TEXT,
             deliveryDate TEXT,
             destination TEXT,
@@ -163,8 +164,8 @@ app.post("/addEntrega", (req, res) => {
           } else {
             // Inserir dados na tabela
             const insertDataQuery = `
-              INSERT INTO hist${id} (id, issueDate, deliveryDate, destination, status)
-              VALUES (?, ?, ?, ?, ?)
+              INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status)
+              VALUES (?, ?, ?, ?, ?,?)
             `;
 
             db.run(
