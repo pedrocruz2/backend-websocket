@@ -131,7 +131,7 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/addEntrega", (req, res) => {
-    const { id, issueDate, destination, deliveryDate, status } = req.body;
+    const { id, assetName, issueDate, destination, deliveryDate, status } = req.body;
 
     // Verificar se a tabela hist{id} existe
     const checkTableQuery = `SELECT name FROM sqlite_master WHERE type='table' AND name='hist${id}'`;
