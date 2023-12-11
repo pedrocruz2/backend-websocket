@@ -230,16 +230,16 @@ app.post("/info", (req, res) => {
 });
 
 app.post("/ativos", (req, res) => {
-  const num = req.body.id;
+  const id = req.body.id;
   // Validate input
-  if (!num) {
+  if (!id) {
     res.json({ message: "id inválido" });
     return;
   }
   // Use a parameterized query for safety and correctness
   const query = `SELECT * FROM ativos WHERE id = ?`;
 
-  db.all(query, [num], (err, rows) => {
+  db.all(query, [id], (err, rows) => {
     if (err) {
       console.error(err.message);
       res.status(500).json({ message: "Internal server error" });
@@ -345,3 +345,29 @@ app.get("/listAll", (req, res) => {
     });
   });
 });
+
+app.post("/location", (req, res) => {
+    const id = req.body.id;
+    // Validate input
+    if (!id) {
+      res.json({ message: "id inválido" });
+      return;
+    }
+    // Use a parameterized query for safety and correctness
+    const query = `SELECT lat,long FROM rastreamento WHERE id = ?`;
+
+    db.all(query, [id], (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        res.status(500).json({ message: "Internal server error" });
+        return;
+      }
+      console.log(rows, "rows");
+      // Check if the user was found
+      if (rows && rows.length === 0) {
+        res.json({ message: false });
+        return; // Prevent further execution after sending response
+      }
+      res.json(rows); // Retorna os dados encontrados
+    });
+  });
