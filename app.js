@@ -371,3 +371,29 @@ app.post("/location", (req, res) => {
       res.json(rows); // Retorna os dados encontrados
     });
   });
+
+  app.post("/hist", (req, res) => {
+    const id = req.body.id;
+    // Validate input
+    if (!id) {
+      res.json({ message: "id inválido" });
+      return;
+    }
+    // Use a parameterized query for safety and correctness
+    const query = `SELECT id,assetName,issueDate,deliveryDate,destination,status FROM hist${req.body.id}`;
+
+    db.all(query, [id], (err, rows) => {
+      if (err) {
+        console.error(err.message);
+        res.status(500).json({ message: "Internal server error" });
+        return;
+      }
+      console.log(rows, "rows");
+      // Check if the user was found
+      if (rows && rows.length === 0) {
+        res.json({ message: false });
+        return; // Prevent further execution after sending response
+      }
+      res.json(rows); // Retorna os dados encontrados
+    });
+  });
