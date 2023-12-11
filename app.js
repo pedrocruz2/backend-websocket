@@ -222,7 +222,6 @@ app.post("/addEntrega", (req, res) => {
   });
 
   app.post("/ativos", (req, res) => {
-    console.log(req.body);
     const num = req.body.id;
     // Validate input
     if (!num) {
@@ -288,7 +287,7 @@ app.post("/addEntrega", (req, res) => {
   });
 
 
-  app.get("/histRows", (req, res) => {
+  app.get("/listAll", (req, res) => {
     // Obter uma lista de todas as tabelas que começam com "hist"
     const getTablesQuery = `SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'hist%'`;
 
