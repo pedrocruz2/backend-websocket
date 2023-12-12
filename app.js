@@ -96,13 +96,10 @@ client.on("message", (topic, message) => {
 });
 
 // TUDO REFERENTE A CONEXÕES DA DATABASE E ENDPOINTS
-app.listen(3001, () => {
-  console.log("Server running on localhost:3001");
-});
 
 app.post("/login", (req, res) => {
   console.log(req.body);
-  const num = req.body.registrationNumber;
+  const num = req.body.numeroRegistro;
   // Validate input
   if (!num) {
     res.json({ message: "Número de registro inválido" });
@@ -128,8 +125,16 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/addEntrega", (req, res) => {
-  const { id, assetName, issueDate, destination, deliveryDate, status } =
-    req.body;
+  const {
+    id,
+    assetName,
+    issueDate,
+    destination,
+    deliveryDate,
+    status,
+    reason,
+  } = req.body;
+  console.log(req.body);
 
   // Verificar se a tabela hist{id} existe
   const checkTableQuery = `SELECT name FROM sqlite_master WHERE type='table' AND name='hist${id}'`;
@@ -153,7 +158,8 @@ app.post("/addEntrega", (req, res) => {
             issueDate TEXT,
             deliveryDate TEXT,
             destination TEXT,
-            status TEXT
+            status TEXT,
+            reason TEXT
           )
         `;
 
@@ -166,13 +172,21 @@ app.post("/addEntrega", (req, res) => {
         } else {
           // Inserir dados na tabela
           const insertDataQuery = `
-              INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status)
-              VALUES (?, ?, ?, ?, ?, ?)
+              INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status,reason)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
             `;
 
           db.run(
             insertDataQuery,
-            [id, assetName, issueDate, deliveryDate, destination, status],
+            [
+              id,
+              assetName,
+              issueDate,
+              deliveryDate,
+              destination,
+              status,
+              reason,
+            ],
             function (err) {
               if (err) {
                 console.log(err);
@@ -191,12 +205,12 @@ app.post("/addEntrega", (req, res) => {
     } else {
       // Se a tabela existir, apenas adicione os dados nela
       const insertDataQuery = `
-          INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status,reason)
+          VALUES (?, ?, ?, ?, ?, ?,?)
         `;
       db.run(
         insertDataQuery,
-        [id, assetName, issueDate, deliveryDate, destination, status],
+        [id, assetName, issueDate, deliveryDate, destination, status, reason],
         function (err) {
           if (err) {
             console.log(err);
@@ -226,6 +240,40 @@ app.post("/info", (req, res) => {
       return;
     }
     res.json(rows);
+  });
+});
+
+app.put("/update-info/:id", (req, res) => {
+  const id = req.params.id;
+  const { name, price, warranty, maintenance, expiration } = req.body;
+
+  // Iniciar a construção da query SQL
+  let updates = [];
+  if (name !== undefined) updates.push(`"name" = '${name}'`);
+  if (price !== undefined) updates.push(`"price" = '${price}'`);
+  if (warranty !== undefined) updates.push(`"warranty" = '${warranty}'`);
+  if (maintenance !== undefined)
+    updates.push(`"maintenance" = '${maintenance}'`);
+  if (expiration !== undefined) updates.push(`"expiration" = '${expiration}'`);
+
+  // Se nenhum campo foi enviado, retornar um erro
+  if (updates.length === 0) {
+    res.status(400).json({ message: "No fields to update" });
+    return;
+  }
+
+  const query = `UPDATE "ativos" SET ${updates.join(
+    ", "
+  )} WHERE "id" = '${id}'`;
+
+  // Substitua esta parte pelo seu código de execução da query no banco de dados
+  db.run(query, function (err) {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ message: "Error updating the info" });
+    } else {
+      res.json({ message: "Info updated successfully", changes: this.changes });
+    }
   });
 });
 
@@ -347,53 +395,56 @@ app.get("/listAll", (req, res) => {
 });
 
 app.post("/location", (req, res) => {
-    const id = req.body.id;
-    // Validate input
-    if (!id) {
-      res.json({ message: "id inválido" });
+  const id = req.body.id;
+  // Validate input
+  if (!id) {
+    res.json({ message: "id inválido" });
+    return;
+  }
+  // Use a parameterized query for safety and correctness
+  const query = `SELECT lat,long FROM rastreamento WHERE id = ?`;
+
+  db.all(query, [id], (err, rows) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ message: "Internal server error" });
       return;
     }
-    // Use a parameterized query for safety and correctness
-    const query = `SELECT lat,long FROM rastreamento WHERE id = ?`;
-
-    db.all(query, [id], (err, rows) => {
-      if (err) {
-        console.error(err.message);
-        res.status(500).json({ message: "Internal server error" });
-        return;
-      }
-      console.log(rows, "rows");
-      // Check if the user was found
-      if (rows && rows.length === 0) {
-        res.json({ message: false });
-        return; // Prevent further execution after sending response
-      }
-      res.json(rows); // Retorna os dados encontrados
-    });
+    console.log(rows, "rows");
+    // Check if the user was found
+    if (rows && rows.length === 0) {
+      res.json({ message: false });
+      return; // Prevent further execution after sending response
+    }
+    res.json(rows); // Retorna os dados encontrados
   });
+});
 
-  app.post("/hist", (req, res) => {
-    const id = req.body.id;
-    // Validate input
-    if (!id) {
-      res.json({ message: "id inválido" });
+app.post("/hist", (req, res) => {
+  const id = req.body.id;
+  if (!id) {
+    res.json({ message: "id inválido" });
+    return;
+  }
+  // Use a parameterized query for safety and correctness
+  const query = `SELECT id,assetName,issueDate,deliveryDate,destination,status,reason FROM hist${id}`;
+  console.log(query);
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ message: "Internal server error" });
       return;
     }
-    // Use a parameterized query for safety and correctness
-    const query = `SELECT id,assetName,issueDate,deliveryDate,destination,status FROM hist${req.body.id}`;
-
-    db.all(query, [id], (err, rows) => {
-      if (err) {
-        console.error(err.message);
-        res.status(500).json({ message: "Internal server error" });
-        return;
-      }
-      console.log(rows, "rows");
-      // Check if the user was found
-      if (rows && rows.length === 0) {
-        res.json({ message: false });
-        return; // Prevent further execution after sending response
-      }
-      res.json(rows); // Retorna os dados encontrados
-    });
+    console.log(rows, "rows");
+    // Check if the user was found
+    if (rows && rows.length === 0) {
+      res.json({ message: false });
+      return; // Prevent further execution after sending response
+    }
+    res.json(rows); // Retorna os dados encontrados
   });
+});
+
+app.listen(3001, () => {
+  console.log("Server running on localhost:3001");
+});
