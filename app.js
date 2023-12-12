@@ -125,52 +125,48 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/addEntrega", (req, res) => {
-  const {
-    id,
-    assetName,
-    issueDate,
-    destination,
-    deliveryDate,
-    status,
-    reason,
-  } = req.body;
-  console.log(req.body);
+  const { id, issueDate, destination, deliveryDate, status, reason } = req.body;
 
-  // Inserir dados na tabela
-  const insertDataQuery = `
-    INSERT INTO hist (id, assetName, issueDate, deliveryDate, destination, status, reason)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  db.run(
-    insertDataQuery,
-    [
-      id,
-      assetName,
-      issueDate,
-      deliveryDate,
-      destination,
-      status,
-      reason,
-    ],
-    function (err) {
-      if (err) {
-        console.log(err);
-        res
-          .status(500)
-          .json({ message: "Erro ao inserir dados na tabela" });
-      } else {
-        res
-          .status(200)
-          .json({ message: "Inserção bem-sucedida", id: id });
-      }
+  // Primeiro, busque o assetName na tabela ativos usando o id
+  const queryAssetName = `SELECT assetName FROM ativos WHERE id = ?`;
+  db.get(queryAssetName, [id], (err, row) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ message: "Erro ao buscar assetName" });
+      return;
     }
-  );
+
+    if (!row) {
+      res.status(404).json({ message: "ativo não encontrado" });
+      return;
+    }
+
+    const assetName = row.assetName;
+
+    // Agora, insira os dados na tabela hist com o assetName encontrado
+    const insertDataQuery = `
+      INSERT INTO hist (id, assetName, issueDate, deliveryDate, destination, status, reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.run(
+      insertDataQuery,
+      [id, assetName, issueDate, deliveryDate, destination, status, reason],
+      function (err) {
+        if (err) {
+          console.error(err.message);
+          res.status(500).json({ message: "Erro ao inserir dados na tabela" });
+          return;
+        }
+        res.status(200).json({ message: "Inserção bem-sucedida", id: id });
+      }
+    );
+  });
 });
 
 app.post("/info", (req, res) => {
   const num = req.body.id;
-  const query = `SELECT name,price, warranty, maintenance, expiration FROM info WHERE id = ${num}`;
+  const query = `SELECT assetName,price, warranty, maintenance, expiration FROM info WHERE id = ${num}`;
   db.all(query, [], (err, rows) => {
     if (err) {
       console.error(err.message);
@@ -187,11 +183,11 @@ app.post("/info", (req, res) => {
 
 app.put("/update-info/:id", (req, res) => {
   const id = req.params.id;
-  const { name, price, warranty, maintenance, expiration } = req.body;
-
+  const { assetName, price, warranty, maintenance, expiration } = req.body;
+  console.log(req.body);
   // Iniciar a construção da query SQL
   let updates = [];
-  if (name !== undefined) updates.push(`"name" = '${name}'`);
+  if (assetName !== undefined) updates.push(`"assetName" = '${assetName}'`);
   if (price !== undefined) updates.push(`"price" = '${price}'`);
   if (warranty !== undefined) updates.push(`"warranty" = '${warranty}'`);
   if (maintenance !== undefined)
@@ -246,7 +242,7 @@ app.post("/ativos", (req, res) => {
 });
 
 app.post("/addAtivo", (req, res) => {
-  const { id, name, price, warranty, expiration, maintenance } = req.body;
+  const { id, assetName, price, warranty, expiration, maintenance } = req.body;
 
   // Verificar se o ativo já existe na tabela
   const checkAtivoQuery = `SELECT * FROM ativos WHERE id = ?`;
@@ -263,13 +259,13 @@ app.post("/addAtivo", (req, res) => {
     // Se o ativo não existir, adicione-o
     if (!row) {
       const addAtivoQuery = `
-          INSERT INTO ativos (id, name, price, warranty, expiration, maintenance)
+          INSERT INTO ativos (id, assetName, price, warranty, expiration, maintenance)
           VALUES (?, ?, ?, ?, ?, ?)
         `;
 
       db.run(
         addAtivoQuery,
-        [id, name, price, warranty, expiration, maintenance],
+        [id, assetName, price, warranty, expiration, maintenance],
         function (err) {
           if (err) {
             console.log(err);
@@ -339,7 +335,6 @@ app.get("/listAll", (req, res) => {
   });
 });
 
-
 app.post("/location", (req, res) => {
   const id = req.body.id;
   // Validate input
@@ -373,7 +368,7 @@ app.post("/hist", (req, res) => {
     return;
   }
   // Use a parameterized query for safety and correctness
-  const query = `SELECT id,assetName,issueDate,deliveryDate,destination,status,reason FROM hist${id}`;
+  const query = `SELECT id,assetName,issueDate,deliveryDate,destination,status,reason FROM hist`;
   console.log(query);
   db.all(query, [], (err, rows) => {
     if (err) {
