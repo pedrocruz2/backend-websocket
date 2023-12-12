@@ -136,94 +136,36 @@ app.post("/addEntrega", (req, res) => {
   } = req.body;
   console.log(req.body);
 
-  // Verificar se a tabela hist{id} existe
-  const checkTableQuery = `SELECT name FROM sqlite_master WHERE type='table' AND name='hist${id}'`;
+  // Inserir dados na tabela
+  const insertDataQuery = `
+    INSERT INTO hist (id, assetName, issueDate, deliveryDate, destination, status, reason)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
 
-  db.get(checkTableQuery, (err, row) => {
-    if (err) {
-      console.log(err);
-      res
-        .status(500)
-        .json({ message: "Erro ao verificar tabela no banco de dados" });
-      return;
+  db.run(
+    insertDataQuery,
+    [
+      id,
+      assetName,
+      issueDate,
+      deliveryDate,
+      destination,
+      status,
+      reason,
+    ],
+    function (err) {
+      if (err) {
+        console.log(err);
+        res
+          .status(500)
+          .json({ message: "Erro ao inserir dados na tabela" });
+      } else {
+        res
+          .status(200)
+          .json({ message: "Inserção bem-sucedida", id: id });
+      }
     }
-
-    // Se a tabela não existir, crie-a
-    if (!row) {
-      const createTableQuery = `
-          CREATE TABLE hist${id} (
-            num INTEGER PRIMARY KEY AUTOINCREMENT,
-            id TEXT,
-            assetName TEXT,
-            issueDate TEXT,
-            deliveryDate TEXT,
-            destination TEXT,
-            status TEXT,
-            reason TEXT
-          )
-        `;
-
-      db.run(createTableQuery, (err) => {
-        if (err) {
-          console.log(err);
-          res
-            .status(500)
-            .json({ message: "Erro ao criar tabela no banco de dados" });
-        } else {
-          // Inserir dados na tabela
-          const insertDataQuery = `
-              INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status,reason)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
-            `;
-
-          db.run(
-            insertDataQuery,
-            [
-              id,
-              assetName,
-              issueDate,
-              deliveryDate,
-              destination,
-              status,
-              reason,
-            ],
-            function (err) {
-              if (err) {
-                console.log(err);
-                res
-                  .status(500)
-                  .json({ message: "Erro ao inserir dados na tabela" });
-              } else {
-                res
-                  .status(200)
-                  .json({ message: "Inserção bem-sucedida", id: id });
-              }
-            }
-          );
-        }
-      });
-    } else {
-      // Se a tabela existir, apenas adicione os dados nela
-      const insertDataQuery = `
-          INSERT INTO hist${id} (id, assetName, issueDate, deliveryDate, destination, status,reason)
-          VALUES (?, ?, ?, ?, ?, ?,?)
-        `;
-      db.run(
-        insertDataQuery,
-        [id, assetName, issueDate, deliveryDate, destination, status, reason],
-        function (err) {
-          if (err) {
-            console.log(err);
-            res
-              .status(500)
-              .json({ message: "Erro ao inserir dados na tabela" });
-          } else {
-            res.status(200).json({ message: "Inserção bem-sucedida", id: id });
-          }
-        }
-      );
-    }
-  });
+  );
 });
 
 app.post("/info", (req, res) => {
@@ -349,33 +291,31 @@ app.post("/addAtivo", (req, res) => {
 });
 
 app.get("/listAll", (req, res) => {
-  // Obter uma lista de todas as tabelas que começam com "hist"
-  const getTablesQuery = `SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'hist%'`;
+  // Obter todos os IDs distintos da tabela "hist"
+  const getDistinctIdsQuery = `SELECT DISTINCT id FROM hist`;
 
-  db.all(getTablesQuery, [], (err, tables) => {
+  db.all(getDistinctIdsQuery, [], (err, ids) => {
     if (err) {
       console.log(err);
       res
         .status(500)
-        .json({ message: "Erro ao obter tabelas no banco de dados" });
+        .json({ message: "Erro ao obter IDs da tabela no banco de dados" });
       return;
     }
 
-    // Array para armazenar as linhas com o maior valor "num" de cada tabela
+    // Array para armazenar as linhas com o maior valor "num" para cada ID
     const resultRows = [];
 
-    // Iterar sobre cada tabela
-    tables.forEach((table) => {
-      const tableName = table.name;
-      // Obter a linha com o maior valor "num" em cada tabela
-      const getMaxNumRowQuery = `SELECT * FROM ${tableName} ORDER BY num DESC LIMIT 1`;
+    // Função para obter a linha com o maior valor "num" para um ID específico
+    const getMaxNumRow = (id) => {
+      const getMaxNumRowQuery = `SELECT * FROM hist WHERE id = ? ORDER BY num DESC LIMIT 1`;
 
-      db.get(getMaxNumRowQuery, [], (err, row) => {
+      db.get(getMaxNumRowQuery, [id], (err, row) => {
         if (err) {
           console.log(err);
           res
             .status(500)
-            .json({ message: `Erro ao obter linha de ${tableName}` });
+            .json({ message: `Erro ao obter linha para o ID ${id}` });
           return;
         }
 
@@ -384,15 +324,21 @@ app.get("/listAll", (req, res) => {
           resultRows.push(row);
         }
 
-        // Se todas as tabelas foram processadas, retornar o resultado
-        if (resultRows.length === tables.length) {
+        // Se todas as IDs foram processadas, retornar o resultado
+        if (resultRows.length === ids.length) {
           res.status(200).json(resultRows);
           console.log(resultRows);
         }
       });
+    };
+
+    // Iterar sobre cada ID e obter a linha com o maior valor "num"
+    ids.forEach((id) => {
+      getMaxNumRow(id.id);
     });
   });
 });
+
 
 app.post("/location", (req, res) => {
   const id = req.body.id;
