@@ -5,6 +5,10 @@ import json
 from datetime import datetime, timedelta
 
 class QRCodeReader:
+    def __new__(cls):
+        if cls._self is None:
+            cls._self = super().__new__(cls)
+        return cls._self
     def __init__(self):
         self.cam = cv2.VideoCapture(0)
         print("Camera initialized")
@@ -21,11 +25,11 @@ class QRCodeReader:
                     break
             await asyncio.sleep(2)  # non-blocking sleep
 
-    
         qr_data = json.loads(data[0])
         print(f"QR Code data: {qr_data}")
         if qr_data['Nome'] != target_medication:
             return 'Medicamento incorreto'
+        
         
 
             
