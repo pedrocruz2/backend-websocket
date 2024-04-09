@@ -1,25 +1,37 @@
 import asyncio
 import websockets
-
+import json
+from classes.wrappers.QrCodeWrapper import QrCodeWrapper
+from classes.wrappers.RobotWrapper import RobotWrapper
 class WebSocketWrapper:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.server = websockets.serve(self.handler, self.host, self.port)
+        self.qr_code_service = QrCodeWrapper()
 
     async def handler(self, websocket, path):
-        # This loop will run for as long as the WebSocket connection is open
-        async for data in websocket:
-            reply = f"Data received as: {data}!"
-            await websocket.send(reply)
-            print(reply)
+        async for message in websocket:
+            print(f"Message from WebSocket: {message}")
+            try:
+                data = json.loads(message)
+                target = data.get('target')
+                action = data.get('action')
 
-    def run(self):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.server)
-        print(f"WebSocket server has started on ws://{self.host}:{self.port}")
-        try:
-            loop.run_forever()
-        except KeyboardInterrupt:
-            print("WebSocket server stopped by user")
-            loop.close()
+                if target == 'QrCode':
+                    print('Target: QRCODE ')
+                    # Call the QR Code service action
+                    await self.qr_code_service.handle_action(action, data)
+                elif target == 'Robot':
+                    # Call the Robot service action
+                    await self.robot_service.handle_action(action, data)
+                else:
+                    print(f"Unknown target: {target}")
+
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON received: {e}")
+                await websocket.send("Error: Invalid JSON format")
+
+    async def start(self):
+        async with websockets.serve(self.handler, self.host, self.port):
+            print(f"WebSocket Server started at ws://{self.host}:{self.port}")
+            await asyncio.Future()  # This will keep the server running indefinitely

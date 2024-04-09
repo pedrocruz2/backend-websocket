@@ -1,19 +1,14 @@
-#import dos wrappers
+import asyncio
 from classes.wrappers.WebSocketWrapper import WebSocketWrapper
-from classes.wrappers.RobotWrapper import RobotWrapper
-from classes.wrappers.QrCodeWrapper import QrCodeWrapper
 
-#handlers do websocket
+async def main():
+    # Initialize WebSocketWrapper and QrCodeWrapper
+    ws = WebSocketWrapper('localhost', 3000)
+    # Schedule both tasks to run concurrently
+    websocket_task = asyncio.create_task(ws.start())
+    
+    # Wait for both tasks to complete (they may run indefinitely)
+    await asyncio.gather(websocket_task)
 
-from classes.handlers.QrCodeWebSocketHandler import QrCodeWebSocketHandler as QRH
-from classes.handlers.RobotWebSocketHandler import RobotWebSocketHandler as RH
-
-qrHandler= QRH()  # Instantiate the QR code WebSocket listener
-robotHandler = RH() 
-ws = WebSocketWrapper('localhost', 3000)
-qr = QrCodeWrapper(qrHandler)
-robot = RobotWrapper(robotHandler, qr)
-
-
-ws.run()    
-
+if __name__ == '__main__':
+    asyncio.run(main())
